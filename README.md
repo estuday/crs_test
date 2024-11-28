@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-# DocParser
-=======
-# CRSExtracter
->>>>>>> d1ff236 (Initial commit)
-
 #### 介绍
 
 本项目为CRS通用抽取接口实现。
