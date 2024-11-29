@@ -1,4 +1,4 @@
-from .dto import CRSExtractResponse, CRSExtractResponseCode
+from .dto import CRSExtractResponse, CRSExtractResponseCode, CRSTRResponse
 from .template import (
     BASE_EXTRACT_TEMPLATE,
     COMPLEXITY_CONSTRAINT_TEMPLATE,
@@ -59,11 +59,13 @@ from .template import (
     TP_TRAINING_TARGET_EXTRACT_TEMPLATE,
 )
 import requests
-from .const import EMBEDDING_URL
+from .const import EMBEDDING_URL, DOCUMENT_PARSER_REQUEST_URL
 import json
 from .dao import doc_retriver
 from nova.data.logos import Logos
 from .crs_properties import JPProperty, JSProperty, TCProperty, TCCProperty, TPProperty
+from enum import Enum
+import os
 
 
 class BaseExtracter:
@@ -108,10 +110,7 @@ class JPExtracter(BaseExtracter):
         job_properties = payload.get("property", [])
         # 不提供属性则抽取全部
         if not job_properties:
-            job_properties = [
-                JPProperty.INTRODUCTION,
-                JPProperty.SOURCE_FROM,
-            ]
+            job_properties = [jp.value for jp in JPProperty]
         extract_result = {}
         for property in job_properties:
             match property:
@@ -147,14 +146,7 @@ class JSExtracter(BaseExtracter):
 
         skill_properties = payload.get("property", [])
         if not skill_properties:
-            skill_properties = [
-                JSProperty.INTRODUCTION,
-                JSProperty.KEYWORDS,
-                JSProperty.COMPLEXITY,
-                JSProperty.LEVEL,
-                JSProperty.TYPE,
-                JSProperty.CASE,
-            ]
+            skill_properties = [js.value for js in JSProperty]
         extract_dict = {}
         for property in skill_properties:
             match property:
@@ -227,27 +219,7 @@ class TCExtracter(BaseExtracter):
 
         course_properties = payload.get("property", [])
         if not course_properties:
-            course_properties = [
-                TCProperty.INTRODUCTION,
-                TCProperty.LANGUAGE,
-                TCProperty.COMPLEXITY,
-                TCProperty.CREDITS,
-                TCProperty.TERMS,
-                TCProperty.UNIVERSITY,
-                TCProperty.DEPARTMENT,
-                TCProperty.MAJOR,
-                TCProperty.LEVEL,
-                TCProperty.TYPE,
-                TCProperty.MODE,
-                TCProperty.METHOD,
-                TCProperty.EXAMINE,
-                TCProperty.STANDARD,
-                TCProperty.TARGET,
-                TCProperty.HOURS,
-                TCProperty.HOURS_OF_PRACTICE,
-                TCProperty.HOURS_OF_THEORY,
-                TCProperty.IDEA_AND_POLICY,
-            ]
+            course_properties = [tc.value for tc in TCProperty]
         extract_result = {}
         for property in course_properties:
             match property:
@@ -421,15 +393,7 @@ class TCCExtracter(BaseExtracter):
             )
         chapter_properties = payload.get("property", [])
         if not chapter_properties:
-            chapter_properties = [
-                TCCProperty.INTRODUCTION,
-                TCCProperty.COMPLEXITY,
-                TCCProperty.HOURS,
-                TCCProperty.IDEA_AND_POLICY,
-                TCCProperty.INSTRUCTION,
-                TCCProperty.MODE,
-                TCCProperty.TARGET,
-            ]
+            chapter_properties = [tcc.value for tcc in TCCProperty]
         extract_result = {}
         for property in chapter_properties:
             match property:
@@ -509,19 +473,7 @@ class TPExtracter(BaseExtracter):
             )
         properties = payload.get("property", [])
         if not properties:
-            properties = [
-                TPProperty.INTRODUCTION,
-                TPProperty.DEPARTMENT,
-                TPProperty.DURATION,
-                TPProperty.GRADUATE_REQUIREMENTS,
-                TPProperty.TRAINING_TARGET,
-                TPProperty.SUBJECT_CATEGORY,
-                TPProperty.MAHOR_TYPE,
-                TPProperty.MAJOR_CODE,
-                TPProperty.BACHELOR,
-                TPProperty.CERTIFICATE,
-                TPProperty.JOB,
-            ]
+            properties = [tp.value for tp in TPProperty]
         extract_result = {}
         for property in properties:
             match property:
@@ -610,3 +562,76 @@ class TPExtracter(BaseExtracter):
                     response = await self.get_rag_response(tp_job_template, constraint)
                     extract_result.update({property: response})
         return CRSExtractResponse(data=extract_result, doc_id=self.doc_id)
+
+
+class TRExtracter:
+    class SupportFormat(str, Enum):
+        DOCX = ".docx"
+        PPTX = ".pptx"
+        MP4 = ".mp4"
+
+    SUPPORT_FORMAT = [sf.value for sf in SupportFormat]
+
+    def parser_document(self, files):
+        _parser = requests.post(DOCUMENT_PARSER_REQUEST_URL, files=files).text
+        parser_rsp = json.loads(_parser)
+        # 处理文档解析后的结果
+        if parser_rsp["code"] == 200:
+            descriptions = []
+            texts = []
+            for res in parser_rsp["data"]["result"]:
+                texts.append(res.get("content", [""])[0])
+                if len(texts) < 3 and res.get("content_type") == "text":
+                    descriptions.append(res.get("content", [""])[0])
+            return "".join(descriptions), "".join(texts)
+        else:
+            raise ValueError("文档解析接口失败")
+
+    def analyze_keywords_and_description(self, files) -> list[str]:
+        from .textrank4zh import TextRank4Keyword
+
+        description, text = self.parser_document(files)
+        t2w = TextRank4Keyword()
+        t2w.analyze(text, lower=True, window=2)
+        keywords = [item.word for item in t2w.get_keywords(3, word_min_len=2)]
+        return keywords, description
+
+    async def tr_extract(self, file) -> CRSExtractResponse:
+        file_content = await file.read()
+        filename = file.filename
+        file_extension = os.path.splitext(filename)[1]
+        filesize = round(len(file_content) / (1024 * 1024), 2)
+        tr_rsp = CRSTRResponse(name=filename, filesize=filesize)
+        match file_extension:
+            case self.SupportFormat.DOCX:
+                tr_rsp.resourcetype = CRSTRResponse.ResourceType.HANDOUTS
+                files = {"file": (filename, file_content, file.content_type)}
+                try:
+                    keywords, description = self.analyze_keywords_and_description(files)
+                    tr_rsp.description = description
+                    tr_rsp.keywords = keywords
+                except:
+                    pass
+            case self.SupportFormat.PPTX:
+                tr_rsp.resourcetype = CRSTRResponse.ResourceType.COURSEWARE
+                files = {"file": (filename, file_content, file.content_type)}
+                try:
+                    keywords, description = self.analyze_keywords_and_description(files)
+                    tr_rsp.description = description
+                    tr_rsp.keywords = keywords
+                except:
+                    pass
+            case self.SupportFormat.MP4:
+                from moviepy.editor import VideoFileClip
+
+                file_location = f"/home/multiAgent/temp/{filename}"
+                with open(file_location, "wb") as f:
+                    f.write(file_content)
+                clip = VideoFileClip(file_location)
+                duration = clip.duration
+                clip.close()
+                os.remove(file_location)
+                tr_rsp.videotime = duration
+        return CRSExtractResponse(
+            data=tr_rsp.model_dump(exclude_none=True, exclude_defaults=True)
+        )

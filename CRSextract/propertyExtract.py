@@ -11,7 +11,14 @@ from nova.sdk.llm.spark.client import Spark
 from dotenv import load_dotenv
 import shutil
 import os
-from .extracter import JPExtracter, JSExtracter, TCExtracter, TCCExtracter, TPExtracter
+from .extracter import (
+    JPExtracter,
+    JSExtracter,
+    TCExtracter,
+    TCCExtracter,
+    TPExtracter,
+    TRExtracter,
+)
 import PyPDF2
 
 load_dotenv()
@@ -21,7 +28,7 @@ common_extract_router = APIRouter()
 
 @common_extract_router.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
-    file_location = f"./temp/{file.filename}"
+    file_location = f"/home/multiAgent/temp/{file.filename}"
     with open(file_location, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
@@ -65,17 +72,6 @@ async def common_extract(crs_type: str, request: CRSExtractRequest):
             code=CRSExtractResponseCode.LACK_PARAM,
             message="doc_id 不可为空",
         )
-    # if file:
-    #     file_location = f"./temp/{file.filename}"
-    #     with open(file_location, "wb") as buffer:
-    #         shutil.copyfileobj(file.file, buffer)
-    #     doc = Document(file_location)
-    #     text = doc.GetText()
-    #     os.remove(file_location)
-    #     texts = text_split(text)
-    #     embedding_rsp = requests.post(EMBEDDING_URL, json={"texts": texts}).text
-    #     doc_embeddings = json.loads(embedding_rsp)["data"]
-    #     doc_id = create_new_document(texts, doc_embeddings)
 
     if crs_type == "jp":
         extracter = JPExtracter(llm, doc_id)
@@ -92,6 +88,13 @@ async def common_extract(crs_type: str, request: CRSExtractRequest):
     elif crs_type == "tp":
         extracter = TPExtracter(llm, doc_id)
         rsp = await extracter.tp_extract(payload)
+    return rsp
+
+
+@common_extract_router.post("/tr")
+async def upload_file(file: UploadFile = File(...)):
+    extracter = TRExtracter()
+    rsp = await extracter.tr_extract(file)
     return rsp
 
 

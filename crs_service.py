@@ -11,8 +11,6 @@ app.include_router(knowledge_router)
 if __name__ == "__main__":
     uvicorn.run(
         app="crs_service:app",
-        host="172.31.99.9",
+        host="0.0.0.0",
         port=8011,
-        reload=True,
-        reload_dirs=["/data/weizhang105/personal/multiAgent"],
     )

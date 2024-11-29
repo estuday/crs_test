@@ -26,3 +26,50 @@ class CRSExtractResponse(BaseModel):
 class CRSExtractRequest(BaseModel):
     payload: Annotated[dict, Field(description="请求内容")]
     doc_id: Annotated[str, Field(default=None, description="文档ID")]
+
+
+class CRSTRResponse(BaseModel):
+    class ResourceType(str, Enum):
+        HANDOUTS = "讲义"
+        COURSEWARE = "课件"
+        EXPERIMENT = "实验"
+        VIDEO = "视频"
+        DATASET = "数据集"
+        BOOKS = "教材"
+        OTHERS = "其他"
+
+    class Complexity(str, Enum):
+        EASY = "简单"
+        LITTLE_EASY = "较简单"
+        MEDIUM = "中等"
+        LITTLE_HARD = "较难"
+        HARD = "困难"
+
+    class SourceFrom(str, Enum):
+        SELF_MAKE = "自研制作"
+        BUY = "购买"
+        PRIVATE = "内部私有数据"
+        OFFICIAL = "组织官方发布"
+        PUBLIC = "大众开源"
+        UNKNOW = "未知来源"
+
+    resourcetype: Annotated[
+        ResourceType, Field(default=ResourceType.OTHERS, description="资源类型")
+    ]
+    name: Annotated[str, Field(description="资源名称")]
+    description: Annotated[str, Field(default=None, description="资源描述")]
+    keywords: Annotated[list[str], Field(default=[], description="关键词列表")]
+    complexity: Annotated[
+        Complexity, Field(default=Complexity.MEDIUM, description="复杂度")
+    ]
+    studyhour: Annotated[int, Field(default=0, description="学时")]
+    theorystudyhour: Annotated[int, Field(default=0, description="理论学时")]
+    practicalstudyhour: Annotated[int, Field(default=0, description="实践学时")]
+    sourcefrom: Annotated[
+        list[SourceFrom], Field(default=[SourceFrom.UNKNOW], description="来源")
+    ]
+    expandinfo: Annotated[list[str], Field(default=None, description="补充信息")]
+    filesize: Annotated[float, Field(description="资源大小，MB")]
+    filepage: Annotated[int, Field(default=None, description="资源页数")]
+    videotime: Annotated[int, Field(default=None, description="视频时长")]
+    resourcepath: Annotated[str, Field(default=None, description="资源本地路径")]
