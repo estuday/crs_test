@@ -101,13 +101,13 @@ class JPExtracter(BaseExtracter):
         super().__init__(llm, doc_id)
 
     async def jp_extract(self, payload: dict):
-        job_name = payload.get("name", None)
+        job_name = payload.name
         if job_name is None:
             return CRSExtractResponse(
                 code=CRSExtractResponseCode.LACK_PARAM,
                 message="JP服务必须提供参数name(岗位名称)",
             )
-        job_properties = payload.get("property", [])
+        job_properties = payload.property
         # 不提供属性则抽取全部
         if not job_properties:
             job_properties = [jp.value for jp in JPProperty]
@@ -137,14 +137,14 @@ class JSExtracter(BaseExtracter):
         super().__init__(llm, doc_id)
 
     async def js_extract(self, payload: dict) -> CRSExtractResponse:
-        skill_name = payload.get("name", None)
+        skill_name = payload.name
         if skill_name is None:
             return CRSExtractResponse(
                 code=CRSExtractResponseCode.LACK_PARAM,
                 message="JS服务必须提供参数name(技能名称)",
             )
 
-        skill_properties = payload.get("property", [])
+        skill_properties =  payload.property
         if not skill_properties:
             skill_properties = [js.value for js in JSProperty]
         extract_dict = {}
@@ -210,14 +210,14 @@ class TCExtracter(BaseExtracter):
         super().__init__(llm, doc_id)
 
     async def tc_extract(self, payload: dict):
-        course_name = payload.get("name", None)
+        course_name = payload.name
         if course_name is None:
             return CRSExtractResponse(
                 code=CRSExtractResponseCode.LACK_PARAM,
                 message="TC服务必须提供参数name(课程名称)",
             )
 
-        course_properties = payload.get("property", [])
+        course_properties =  payload.property
         if not course_properties:
             course_properties = [tc.value for tc in TCProperty]
         extract_result = {}
@@ -385,13 +385,13 @@ class TCCExtracter(BaseExtracter):
         super().__init__(llm, doc_id)
 
     async def tcc_extract(self, payload: dict) -> CRSExtractResponse:
-        chapter_name = payload.get("name", None)
+        chapter_name = payload.name
         if chapter_name is None:
             return CRSExtractResponse(
                 code=CRSExtractResponseCode.LACK_PARAM,
                 message="缺少章节名称",
             )
-        chapter_properties = payload.get("property", [])
+        chapter_properties =  payload.property
         if not chapter_properties:
             chapter_properties = [tcc.value for tcc in TCCProperty]
         extract_result = {}
@@ -465,13 +465,13 @@ class TPExtracter(BaseExtracter):
         super().__init__(llm, doc_id)
 
     async def tp_extract(self, payload: dict) -> CRSExtractResponse:
-        major_name = payload.get("name", None)
+        major_name = payload.name
         if major_name is None:
             return CRSExtractResponse(
                 code=CRSExtractResponseCode.LACK_PARAM,
                 message="缺少专业名称",
             )
-        properties = payload.get("property", [])
+        properties = payload.property
         if not properties:
             properties = [tp.value for tp in TPProperty]
         extract_result = {}
@@ -623,8 +623,8 @@ class TRExtracter:
                     pass
             case self.SupportFormat.MP4:
                 from moviepy.editor import VideoFileClip
-
-                file_location = f"/home/multiAgent/temp/{filename}"
+                tr_rsp.resourcetype = CRSTRResponse.ResourceType.VIDEO
+                file_location = f"./temp/{filename}"
                 with open(file_location, "wb") as f:
                     f.write(file_content)
                 clip = VideoFileClip(file_location)
@@ -632,6 +632,8 @@ class TRExtracter:
                 clip.close()
                 os.remove(file_location)
                 tr_rsp.videotime = duration
+            case _:
+                tr_rsp.resourcetype = CRSTRResponse.ResourceType.OTHERS
         return CRSExtractResponse(
             data=tr_rsp.model_dump(exclude_none=True, exclude_defaults=True)
         )

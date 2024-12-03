@@ -1,0 +1,10 @@
+fastapi
+pydantic
+dotenv
+mongoengine
+sqlalchemy
+pgvector
+PyPDF2
+Spire.Doc
+langchain_text_splitters
+nova @ git+ssh://git@code.iflytek.com:30004/ZHBG_AILABKDG/Share/nova-llm.git

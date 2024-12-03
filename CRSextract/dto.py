@@ -24,7 +24,10 @@ class CRSExtractResponse(BaseModel):
 
 
 class CRSExtractRequest(BaseModel):
-    payload: Annotated[dict, Field(description="请求内容")]
+    class Payload(BaseModel):
+        name: Annotated[str,Field(description="名称")]
+        property: Annotated[list[str], Field(default=[],description="需要抽取的属性，不输入则抽取全部")]
+    payload: Annotated[Payload, Field(description="请求内容")]
     doc_id: Annotated[str, Field(default=None, description="文档ID")]
 
 
@@ -54,7 +57,7 @@ class CRSTRResponse(BaseModel):
         UNKNOW = "未知来源"
 
     resourcetype: Annotated[
-        ResourceType, Field(default=ResourceType.OTHERS, description="资源类型")
+        ResourceType, Field(default=None,description="资源类型")
     ]
     name: Annotated[str, Field(description="资源名称")]
     description: Annotated[str, Field(default=None, description="资源描述")]

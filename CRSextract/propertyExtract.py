@@ -8,7 +8,6 @@ from .const import EMBEDDING_URL
 import json
 from .dao import create_new_document
 from nova.sdk.llm.spark.client import Spark
-from dotenv import load_dotenv
 import shutil
 import os
 from .extracter import (
@@ -21,14 +20,12 @@ from .extracter import (
 )
 import PyPDF2
 
-load_dotenv()
 llm = Spark()
 common_extract_router = APIRouter()
 
-
 @common_extract_router.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
-    file_location = f"/home/multiAgent/temp/{file.filename}"
+    file_location = f"./temp/{file.filename}"
     with open(file_location, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
@@ -96,15 +93,3 @@ async def upload_file(file: UploadFile = File(...)):
     extracter = TRExtracter()
     rsp = await extracter.tr_extract(file)
     return rsp
-
-
-# if __name__ == "__main__":
-#     import uvicorn
-
-#     uvicorn.run(
-#         app="propertyExtract:app",
-#         host="172.31.99.9",
-#         port=8011,
-#         reload=True,
-#         reload_dirs=["/data/weizhang105/personal/multiAgent/CRSextract"],
-#     )

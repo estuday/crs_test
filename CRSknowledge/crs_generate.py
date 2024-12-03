@@ -1,7 +1,5 @@
 from nova.data.logos import Logos
-from nova.sdk.llm.glm.client import GLM
 from nova.sdk.llm.spark.client import Spark
-from dotenv import load_dotenv
 import requests
 import json
 from fastapi.responses import StreamingResponse
@@ -34,9 +32,8 @@ connect(
     password=MONGO_DB_PASSWORD,
     authentication_source="admin",  # 指定认证数据库
 )
-load_dotenv()
+
 spark = Spark()
-glm = GLM()
 llm = spark
 
 

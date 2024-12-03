@@ -51,5 +51,5 @@ def doc_retriver(query_embed: list[float], doc_id: str):
             .order_by(DocumentORM.embedding.cosine_distance(query_embed))
             .limit(3)
         )
-        contents = [_doc.content for _doc in doc]
+        contents = [_doc.content[:1000] for _doc in doc]
         return contents
